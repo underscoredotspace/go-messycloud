@@ -1,0 +1,5 @@
+package watchfolder
+
+func main() {
+
+}
