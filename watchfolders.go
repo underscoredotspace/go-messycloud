@@ -1,5 +1,0 @@
-package watchfolder
-
-func main() {
-
-}
