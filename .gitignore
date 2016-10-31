@@ -1,2 +1,5 @@
 settings.json
 messycloud
+error.log
+.DS_Store
+**/.DS_Store

@@ -1,9 +1,3 @@
-// Copyright 2012 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-// +build !plan9
-
 package main
 
 import (
@@ -14,8 +8,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func main() {
-    
+func messyWatcher(path string) error {
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -57,9 +51,14 @@ func main() {
 		log.Fatal(err)
 	}
 	<-done
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func addWatch(watcher fsnotify.Watcher, path string) error{
+func addWatch(watcher fsnotify.Watcher, path string) error {
 	if err := watcher.Add(path); err != nil {
 		return err
 	}
