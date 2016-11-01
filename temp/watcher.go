@@ -8,7 +8,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func messyWatcher(path string) error {
+func main() {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -21,25 +21,7 @@ func messyWatcher(path string) error {
 		for {
 			select {
 			case event := <-watcher.Events:
-				log.Println("Event:", uint(event.Op))
-				switch event.Op {
-				case fsnotify.Write:
-					log.Println("Edit:", event.Name)
-				case fsnotify.Create:
-					log.Println("Create:", event.Name)
-					if err := isFolder(event.Name); err == nil {
-						if err = addWatch(*watcher, event.Name); err != nil {
-							log.Println("Error adding watch for folder: ", event.Name)
-						}
-					}
-				case fsnotify.Remove, fsnotify.Op(12):
-					log.Println("Delete:", event.Name)
-					if err := isFolder(event.Name); err == nil {
-						if err = watcher.Remove(event.Name); err != nil {
-							log.Println("Error removing watch for folder: ", event.Name)
-						}
-					}
-				}
+				log.Println("Event:", event)
 			case err := <-watcher.Errors:
 				log.Printf("error: %s\n\n", err)
 			}
@@ -51,11 +33,6 @@ func messyWatcher(path string) error {
 		log.Fatal(err)
 	}
 	<-done
-
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func addWatch(watcher fsnotify.Watcher, path string) error {
