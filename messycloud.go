@@ -10,67 +10,73 @@ import (
 )
 
 func main() {
-	var newWatchPath = make(chan string)
-
 	config := jconfig.LoadConfig("./settings.json")
 	datafolder := config.GetString("datafolder")
 	if datafolder == "" {
 		log.Fatalln("datafolder not specifed or empty in settings.json")
 	}
 
-	// Set up messyWatcher object and handle events
-	setupWatch(newWatchPath)
-
-	// Watch the datafolder, and recurse as required
-	if err := indexFolder(newWatchPath, datafolder); err != nil {
+	watchFolderList, err := indexDataFolder(datafolder)
+	if err != nil {
 		log.Fatalln(err)
 	}
+	watchFolders(watchFolderList)
 }
 
-func indexFolder(newWatchPath chan string, datafolder string) error {
+func indexDataFolder(folderpath string) ([]string, error) {
+	watchFolderList := []string{folderpath}
+
 	// Returns list of items in datafolder
-	items, err := ioutil.ReadDir(datafolder)
+	items, err := ioutil.ReadDir(folderpath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, item := range items {
-		if item.IsDir() {
-			// addToDB(datafolder)
-			newWatchPath <- filepath.Join(datafolder, item.Name())
-		} else if item.Name()[0:1] == "." {
-			log.Printf("Hidden file \"%s\" ignored", item.Name())
+		if item.Name()[0:1] == "." {
+			//log.Printf("Hidden item \"%s\" ignored", item.Name())
 		} else {
-			// addToDB(datafolder & item.Name())
-			log.Println(item.Name(), "is a file")
+			if item.IsDir() {
+				// addToDB(datafolder)
+				recurseItem, err := indexDataFolder(filepath.Join(folderpath, item.Name()))
+				if err != nil {
+					log.Fatalln(err)
+				}
+				for _, subItem := range recurseItem {
+					watchFolderList = append(watchFolderList, subItem)
+				}
+			} else {
+				// addToDB(datafolder & item.Name())
+				//log.Println(item.Name(), "is a file")
+			}
 		}
 	}
 
-	// Watch for changes
-	newWatchPath <- datafolder
-	return nil
+	return watchFolderList, err
 }
 
-func setupWatch(newWatchPath chan string) {
-	done := make(chan bool)
-	messyWatcher, err := fsnotify.NewWatcher()
+func watchFolders(watchFolderList []string) {
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer messyWatcher.Close()
+	defer watcher.Close()
 
+	for _, item := range watchFolderList {
+		if err := watcher.Add(item); err != nil {
+			log.Println("Failed to add new watch: ", item, err)
+		}
+		log.Println("New watch added:", item)
+	}
+
+	done := make(chan bool)
 	go func() {
 		for {
 			select {
-			case event := <-messyWatcher.Events:
+			case event := <-watcher.Events:
 				log.Println("Event:", event)
-			case err := <-messyWatcher.Errors:
+			case err := <-watcher.Errors:
 				log.Printf("error: %s\n\n", err)
-			case newPath := <-newWatchPath:
-				if err := messyWatcher.Add(newPath); err != nil {
-					log.Println("Error adding watch for", newPath)
-				}
-				log.Println("New watch added for", newPath)
 			}
 		}
 	}()
