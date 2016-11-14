@@ -10,16 +10,9 @@ import (
 	"stathat.com/c/jconfig"
 )
 
-type fsItem int
-
-const (
-	messyFile fsItem = iota
-	messyFolder
-)
-
 type messyItem struct {
-	mtime  time.Time
-	fsItem fsItem
+	mtime time.Time
+	isDir bool
 }
 
 type messyFolders map[string]messyItem
@@ -32,10 +25,10 @@ func main() {
 	}
 
 	myfolders := make(messyFolders)
-	myfolders[datafolder] = messyItem{time.Now(), messyFolder}
+	myfolders[datafolder] = messyItem{time.Now(), true}
 	indexFolder(datafolder, myfolders)
 	for path, item := range myfolders {
-		fmt.Println(path, "is a", item.fsItem, "last edited", item.mtime)
+		fmt.Println(path, "last edited", item.mtime, "dir:", item.isDir)
 	}
 }
 
@@ -49,10 +42,10 @@ func indexFolder(indexPath string, messyfolder messyFolders) {
 		if item.Name()[0:1] != "." {
 			fullPath = filepath.Join(indexPath, item.Name())
 			if item.IsDir() {
-				messyfolder[fullPath] = messyItem{time.Now(), messyFolder}
+				messyfolder[fullPath] = messyItem{time.Now(), true}
 				indexFolder(fullPath, messyfolder)
 			} else {
-				messyfolder[fullPath] = messyItem{time.Now(), messyFile}
+				messyfolder[fullPath] = messyItem{time.Now(), false}
 			}
 		}
 	}
