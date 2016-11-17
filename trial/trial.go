@@ -32,11 +32,17 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	if err := updateMessyDatabase(fileList); err != nil {
+	session, err := mgo.Dial("127.0.0.1")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer session.Close()
+
+	if err := updateMessyDatabase(fileList, session); err != nil {
 		log.Fatalln(err)
 	}
 
-	dbFileList, err := getfromMessyDatabase()
+	dbFileList, err := getfromMessyDatabase(session)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -59,16 +65,10 @@ func getMessyStructure(datafolder string) ([]messyfolders, error) {
 	return fileList, err
 }
 
-func updateMessyDatabase(fileList []messyfolders) error {
-	session, err := mgo.Dial("127.0.0.1")
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
+func updateMessyDatabase(fileList []messyfolders, session *mgo.Session) error {
 	collection := session.DB("colin").C("messyfiles")
 	for _, fileItem := range fileList {
-		if err = collection.Insert(fileItem); err != nil {
+		if err := collection.Insert(fileItem); err != nil {
 			return err
 		}
 	}
@@ -76,14 +76,8 @@ func updateMessyDatabase(fileList []messyfolders) error {
 	return nil
 }
 
-func getfromMessyDatabase() ([]messyfolders, error) {
+func getfromMessyDatabase(session *mgo.Session) ([]messyfolders, error) {
 	var fileList []messyfolders
-
-	session, err := mgo.Dial("127.0.0.1")
-	if err != nil {
-		return nil, err
-	}
-	defer session.Close()
 
 	collection := session.DB("colin").C("messyfiles")
 	// err = c.Find(bson.M{"name": "Ale"}).Sort("-timestamp").All(&results)
