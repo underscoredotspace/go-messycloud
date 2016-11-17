@@ -1,13 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"stathat.com/c/jconfig"
 )
 
@@ -31,11 +32,20 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	output, err := json.Marshal(fileList)
-	if err != nil {
-		log.Fatal(err)
+	if err := updateMessyDatabase(fileList); err != nil {
+		log.Fatalln(err)
 	}
-	fmt.Println(string(output))
+
+	dbFileList, err := getfromMessyDatabase()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	var dbFileItem messyfolders
+	for _, dbFileItem = range dbFileList {
+		fmt.Println(dbFileItem.Path, dbFileItem.ModTime)
+	}
+
 }
 
 func getMessyStructure(datafolder string) ([]messyfolders, error) {
@@ -47,4 +57,39 @@ func getMessyStructure(datafolder string) ([]messyfolders, error) {
 		return nil
 	})
 	return fileList, err
+}
+
+func updateMessyDatabase(fileList []messyfolders) error {
+	session, err := mgo.Dial("127.0.0.1")
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	collection := session.DB("colin").C("messyfiles")
+	for _, fileItem := range fileList {
+		if err = collection.Insert(fileItem); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getfromMessyDatabase() ([]messyfolders, error) {
+	var fileList []messyfolders
+
+	session, err := mgo.Dial("127.0.0.1")
+	if err != nil {
+		return nil, err
+	}
+	defer session.Close()
+
+	collection := session.DB("colin").C("messyfiles")
+	// err = c.Find(bson.M{"name": "Ale"}).Sort("-timestamp").All(&results)
+	if err := collection.Find(bson.M{}).All(&fileList); err != nil {
+		log.Fatal(err)
+	}
+
+	return fileList, nil
 }
